@@ -2,18 +2,19 @@
 title: "PA1-RR"
 author: "pdm"
 date: "20 July 2015"
-output: 
-  html_document: 
+output:
+  html_document:
     keep_md: yes
+  pdf_document: default
 ---
 In this assignment, we are going to use data from a personal activity monitoring device. We will use some data analysis and generate exploratory plots. The assignment has five sections.
 
-I. Loading & Processing Data
+1. Loading & Processing Data
 The dataset has three columns. The interval column has intiger value 5 min gap from 0 to 23 h. Hence another column with appropriate timestamp is added. Another additional column specifying weekdays/weekends are added. 
 
 
 ```{r,echo=TRUE}
-setwd("~/Documents/Data-science/Rerproducible Research/RepData_PeerAssessment1/")
+setwd("~/Documents/Data-science/Reproducible Research/RepData_PeerAssessment1/")
 #read data
 library(dplyr)
 library(ggplot2)
@@ -34,7 +35,7 @@ date_time <- mutate(activity, date_time3)
 
 ```
 
-II. Mean of the total number of steps taken per day
+Mean of the total number of steps taken per day
 
 ```{r, echo=TRUE}
 new_activity <- date_time %>%group_by(date) %>% na.omit()
@@ -42,17 +43,18 @@ sum_steps <- summarise(new_activity, total_steps = sum(steps))
 
 ```
 
-Histogram of the total steps taken each day
+2. Histogram of the total steps taken each day
 ```{r, echo=TRUE}
 hist(sum_steps$total_steps, xlab = "Total steps per day", main = "Histogram of total steps taken each day")
 ```
-The mean and median of the total number of steps taken each day
+
+3.The mean and median of the total number of steps taken each day
 ```{r, echo=TRUE}
 na1 <- activity %>% na.omit(activity) %>% group_by(date) %>% summarise(total = sum(steps)) %>% summarise(mean = mean(total), median = median(total))
 na1
 ```
 
-III. Average daily activity pattern
+4. Average daily activity pattern
 ```{r, echo=TRUE}
 na2 <- date_time %>% na.omit()
 na3 <- na2 %>% group_by(interval) %>% summarise(average_steps = mean(steps))
@@ -63,7 +65,7 @@ na4 <- mutate(na3, Time = unique(time_hmin2))
 with(na4, plot(Time, average_steps, type = "l", ylab = "Average Steps", main = "Daily Activity Pattern", xlim = c(min(time_hmin2),max(time_hmin2))))
 ```
 
-Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+5. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
 
 ```{r,echo=TRUE}
 #the interval showing the highest average steps.
@@ -71,41 +73,45 @@ na5 <- mutate(na3, Time =unique(time_hmin))
 subset(na5, average_steps == max(average_steps))
 ```
 
-IV. Imputing missing values
+6. Imputing missing values
 
-```{r, echo=TRUE}
-#total number of missing values
-sum(is.na(activity))
+Missing data can be imputed variously, including Random imputation, Regression imputation etc. In this case, I have tried to impute the missing value with an value which is like to be that value. To simply, I have avoided regression analysis, and used an average of the steps taken at that particular interval in other days and replaced it. The average is rounded off, before replacing NA. 
+
+```{r}
+# Average steps per interval
+nax <- activity %>% na.omit(activity) %>% group_by(interval) %>% summarise(avx_steps = mean(steps)) 
+# number of times intervals are repeated
+re <- nrow(activity)/length(unique(activity$interval))
+#make a dataframe of equal number of rows with activity
+imp_val <- data.frame(rep(nax$avx_steps, 61))
+#rounding of the averages to nearest integer
+rounded.val <- round(imp_val, digits = 0)
+colnames(rounded.val) <- letters[1]
+imputed_activity <- activity
+imputed_activity$steps <- ifelse(is.na(imputed_activity$steps), rounded.val$a, imputed_activity$steps )
+
 ```
 
-Impute data with Amelia Package
-```{r, echo=TRUE}
-library(Amelia)
-#a.out <- amelia( data, noms = colnames(activity))
-#write.amelia(obj=a.out, file.stem = "outdata")
-
-```
-
-
-Histogram of total number of steps taken each day with the imputed values
+7. Histogram of total number of steps taken each day with the imputed values
 
 ```{r,echo=TRUE}
 #read the amelia outpute file
-imp_activity <- read.csv("outdata1.csv", header = TRUE)
-new_imp_activity <- imp_activity %>%
+
+new_imputed_activity <- imputed_activity %>%
         group_by(date) %>%
         summarise(total_steps = sum(mean(steps)))
 #plot the data
-hist(new_imp_activity$total_steps, xlab = "Total steps per day", main = "Histogram of total steps taken each day")
+hist(new_imputed_activity$total_steps, xlab = "Total steps per day", main = "Histogram of total steps taken each day")
 ```
 
 Mean and Median of the total number of steps taken in imputed data
 ```{r,echo=TRUE}
-Ina <- imp_activity %>% group_by(date) %>% summarise(total = sum(steps)) %>% summarise(mean = mean(total), median = median(total))
+Ina <- imputed_activity %>% group_by(date) %>% summarise(total = sum(steps)) %>% summarise(mean = mean(total), median = median(total))
 Ina
 ```
 
-V. Differences in activity patterns between weekdays and weekends
+
+8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
 
 Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day
 
@@ -122,6 +128,7 @@ dfweek <- week %>% group_by(day, interval) %>% na.omit() %>% summarise(Mean_step
 #add another column for interval as POSIXct
 dfweek2 <- mutate(dfweek, Time = unique(time_hmin2))
 ```
+
 Panel plots showing average number of steps taken
 ```{r,echo=TRUE}
 #plot the graph with two facets
